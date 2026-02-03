@@ -135,7 +135,7 @@ menu.style.display="none";
 
 logoutBtn.onclick=()=>{
 localStorage.removeItem("currentUser");
-location.href="login2.html";
+location.href="index.html";
 };
 
 let users=JSON.parse(localStorage.getItem("users"))||{};
@@ -228,3 +228,4 @@ themeBtn.onclick=()=>document.body.classList.toggle("dark");
 </script>
 </body>
 </html>
+
