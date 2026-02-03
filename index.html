@@ -70,7 +70,7 @@ function auth(){
   if(isLogin){
     if(users[u]&&users[u].pass===p){
       localStorage.setItem("currentUser",u);
-      location.href="expense2.html";
+      location.href="dashboard.html";
     }else error.style.display="block";
   }else{
     if(users[u]){error.innerText="User exists";error.style.display="block";return;}
@@ -82,4 +82,5 @@ function auth(){
 </script>
 </body>
 </html>
+
 
