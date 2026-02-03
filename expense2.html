@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Expense F | Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+if(!localStorage.getItem("currentUser")){
+  location.href="login2.html";
+}
+</script>
+
+<style>
+:root{--primary:#6366f1;--bg:#f1f5ff}
+*{box-sizing:border-box;font-family:Poppins}
+body{margin:0;background:var(--bg)}
+header{background:var(--primary);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:15px}
+#menuBtn{font-size:24px;cursor:pointer}
+.menu{display:none;flex-direction:column;background:#fff}
+.menu button{padding:16px;border:none;background:none;text-align:left}
+.menu button:hover{background:var(--primary);color:#fff}
+.main{padding:22px}
+.page{display:none;animation:fade .4s ease}
+.page.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card{background:#fff;border-radius:22px;padding:22px;margin-bottom:25px;box-shadow:0 15px 40px rgba(0,0,0,.15)}
+input,select{width:100%;padding:14px;margin-top:12px;border-radius:14px;border:1px solid #ddd}
+button.action{width:100%;margin-top:18px;padding:14px;border:none;border-radius:16px;background:var(--primary);color:#fff;font-weight:600;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}
+.stat{text-align:center;background:#f8f9ff;padding:14px;border-radius:16px}
+.chart-box{max-width:320px;margin:0 auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;text-align:left}
+tr:hover{background:#f1f5ff}
+body.dark{--bg:#0f172a;background:#0f172a}
+body.dark .card,body.dark .menu{background:#020617;color:#e5e7eb}
+.small-btn{margin-top:10px;padding:10px;border:none;border-radius:12px;cursor:pointer}
+</style>
+</head>
+
+<body>
+<header>
+  <span id="menuBtn">☰</span>
+  <h3>Hi, <span id="uname"></span> 👋</h3>
+  <button id="themeBtn" style="margin-left:auto">🌙</button>
+</header>
+
+<div class="menu" id="menu">
+  <button data-page="dash">🏠 Dashboard</button>
+  <button data-page="history">📜 History</button>
+  <button data-page="about">ℹ️ About</button>
+  <button id="logoutBtn">🚪 Logout</button>
+</div>
+
+<div class="main">
+
+<!-- DASHBOARD -->
+<div id="dash" class="page active">
+<div class="card">
+<input id="title" placeholder="Expense title">
+<input id="amount" type="number" placeholder="Amount">
+
+<select id="category">
+<option value="">Select Category</option>
+<option>Food</option>
+<option>Travel</option>
+<option>Education</option>
+<option>Entertainment</option>
+<option>Other</option>
+</select>
+
+<button class="action" id="addBtn">➕ Add Expense</button>
+
+<button class="small-btn" onclick="exportCSV()">⬇ Export CSV</button>
+<button class="small-btn" onclick="clearAll()">🗑 Clear All</button>
+
+<div class="stats">
+<div class="stat"><h3 id="total">₹0</h3>Total</div>
+<div class="stat"><h3 id="count">0</h3>Records</div>
+<div class="stat"><h3 id="max">₹0</h3>Highest</div>
+</div>
+
+<p id="empty" style="text-align:center;color:#94a3b8;display:none;margin-top:15px">
+No expenses added yet 🚀
+</p>
+</div>
+
+<div class="card">
+<div class="chart-box"><canvas id="expenseChart"></canvas></div>
+</div>
+</div>
+
+<!-- HISTORY -->
+<div id="history" class="page">
+<div class="card">
+<input id="search" placeholder="Search title or category">
+<input type="date" id="filterDate">
+
+<table>
+<thead>
+<tr>
+<th>Title</th><th>Amount</th><th>Category</th><th>Date</th><th></th>
+</tr>
+</thead>
+<tbody id="list"></tbody>
+</table>
+</div>
+</div>
+
+<!-- ABOUT -->
+<div id="about" class="page">
+<div class="card">
+<h3 style="color:#6366f1">About Expense F</h3>
+<p>Modern expense tracking app with analytics.</p>
+</div>
+</div>
+
+</div>
+
+<script>
+
+const menu=document.getElementById("menu");
+menuBtn.onclick=()=>menu.style.display=menu.style.display==="flex"?"none":"flex";
+
+document.querySelectorAll(".menu button[data-page]").forEach(btn=>{
+btn.onclick=()=>{
+document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+document.getElementById(btn.dataset.page).classList.add("active");
+menu.style.display="none";
+};
+});
+
+logoutBtn.onclick=()=>{
+localStorage.removeItem("currentUser");
+location.href="login2.html";
+};
+
+let users=JSON.parse(localStorage.getItem("users"))||{};
+let user=localStorage.getItem("currentUser");
+uname.innerText=user;
+let data=users[user]?.expenses||[];
+
+addBtn.onclick=()=>{
+if(!category.value||!amount.value)return;
+data.push({title:title.value,amount:+amount.value,category:category.value,date:new Date().toISOString().slice(0,10)});
+users[user].expenses=data;
+localStorage.setItem("users",JSON.stringify(users));
+title.value=amount.value="";
+render();
+};
+
+function del(i){
+data.splice(i,1);
+users[user].expenses=data;
+localStorage.setItem("users",JSON.stringify(users));
+render();
+}
+
+/* ===== NEW FUNCTIONS ONLY ===== */
+
+function exportCSV(){
+let csv="Title,Amount,Category,Date\n";
+data.forEach(e=>csv+=`${e.title},${e.amount},${e.category},${e.date}\n`);
+let a=document.createElement("a");
+a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+a.download="expenses.csv";
+a.click();
+}
+
+function clearAll(){
+if(!confirm("Delete all expenses?"))return;
+data=[];
+users[user].expenses=[];
+localStorage.setItem("users",JSON.stringify(users));
+render();
+}
+
+search.oninput=filter;
+filterDate.onchange=filter;
+
+function filter(){
+let s=search.value.toLowerCase();
+let d=filterDate.value;
+list.innerHTML="";
+data.filter(e=>
+(!s||e.title.toLowerCase().includes(s)||e.category.toLowerCase().includes(s)) &&
+(!d||e.date===d)
+).forEach((e,i)=>{
+list.innerHTML+=`
+<tr>
+<td>${e.title}</td>
+<td>₹${e.amount}</td>
+<td>${e.category}</td>
+<td>${e.date}</td>
+<td onclick="del(${i})" style="color:red;cursor:pointer">✖</td>
+</tr>`;
+});
+}
+
+let chart;
+function render(){
+let t=0,m=0,cat={Food:0,Travel:0,Education:0,Entertainment:0,Other:0};
+list.innerHTML="";
+data.forEach((e,i)=>{
+t+=e.amount;m=Math.max(m,e.amount);cat[e.category]+=e.amount;
+list.innerHTML+=`
+<tr>
+<td>${e.title}</td>
+<td>₹${e.amount}</td>
+<td>${e.category}</td>
+<td>${e.date}</td>
+<td onclick="del(${i})" style="color:red;cursor:pointer">✖</td>
+</tr>`;
+});
+total.innerText="₹"+t;
+count.innerText=data.length;
+max.innerText="₹"+m;
+empty.style.display=data.length?"none":"block";
+if(chart)chart.destroy();
+chart=new Chart(expenseChart,{type:"doughnut",data:{labels:Object.keys(cat),datasets:[{data:Object.values(cat)}]}});
+}
+render();
+
+themeBtn.onclick=()=>document.body.classList.toggle("dark");
+</script>
+</body>
+</html>
